@@ -1,9 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import dotenv from 'dotenv';
-
-dotenv.config({ path: '.env' });
 
 @Module({
   imports: [
@@ -17,7 +14,7 @@ dotenv.config({ path: '.env' });
         username: configService.get('POSTGRES_USER'),
         password: configService.get('POSTGRES_PASSWORD'),
         database: configService.get('POSTGRES_DB'),
-        entities: [__dirname + '/../**/*.entity.ts'],
+        entities: [__dirname + '/../**/*.entity.{ts,js}'],
         synchronize: true,
       }),
     }),

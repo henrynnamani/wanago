@@ -6,7 +6,8 @@ import { ConfigModule } from '@nestjs/config';
 import { DatabaseModule } from './database/database.module';
 import { UsersModule } from './users/users.module';
 import { AuthsModule } from './auths/auths.module';
-import Joi from 'joi';
+import * as Joi from 'joi';
+import { LocalStrategy } from './auths/strategy/local.strategy';
 
 @Module({
   imports: [
@@ -20,6 +21,8 @@ import Joi from 'joi';
         POSTGRES_PASSWORD: Joi.string().required(),
         POSTGRES_DB: Joi.string().required(),
         PORT: Joi.number().optional(),
+        JWT_SECRET: Joi.string().required(),
+        JWT_EXPIRATION_TIME: Joi.string().required(),
       }),
     }),
     DatabaseModule,

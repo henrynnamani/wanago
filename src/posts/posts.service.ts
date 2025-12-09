@@ -1,25 +1,49 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Inject } from '@nestjs/common';
 import { CreatePostDto, UpdatePostDto } from './dto/posts.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Post } from './model/post.entity';
 import { Repository } from 'typeorm';
+import { User } from 'src/users/model/user.entity';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 
 @Injectable()
 export class PostsService {
   constructor(
     @InjectRepository(Post)
     private readonly postsRepository: Repository<Post>,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
-  getAllPosts() {
-    return this.postsRepository.find();
+  async getAllPosts() {
+    const cachedPosts = await this.cacheManager.get('posts');
+
+    if (cachedPosts) {
+      return cachedPosts;
+    }
+
+    const posts = this.postsRepository.find({ relations: ['author'] });
+
+    await this.cacheManager.set('posts', posts);
+
+    return posts;
   }
 
   async getPostById(id: string) {
+    const cacheKey = `post:${id}`;
+
+    const cachedPost = await this.cacheManager.get(cacheKey);
+
+    if (cachedPost) {
+      return cachedPost;
+    }
+
     const post = await this.postsRepository.findOneBy({ id });
     if (post) {
+      await this.cacheManager.set(cacheKey, post);
       return post;
     }
+
     throw new HttpException('Post not found', HttpStatus.NOT_FOUND);
   }
 
@@ -27,13 +51,22 @@ export class PostsService {
     await this.postsRepository.update(id, post);
     const updatedPost = await this.postsRepository.findOneBy({ id });
     if (updatedPost) {
+      await this.cacheManager.del(`post:${id}`);
+      await this.cacheManager.del('posts');
       return updatedPost;
     }
+
     throw new HttpException('Post not found', HttpStatus.NOT_FOUND);
   }
 
-  async createPost(post: CreatePostDto) {
-    const newPost = this.postsRepository.create(post);
+  async createPost(post: CreatePostDto, user: User) {
+    const newPost = this.postsRepository.create({
+      ...post,
+      author: user,
+    });
+
+    await this.cacheManager.del('posts');
+
     return this.postsRepository.save(newPost);
   }
 

@@ -24,6 +24,25 @@ services:
     - docker.env
     networks:
     - postgres
+  redis:
+    image: "redis:7-alpine"  # Updated from "redis:alpine"
+    ports:
+      - "6380:6379"
+    command: redis-server --save 20 1 --loglevel warning  # Optional: custom config
+    volumes:
+      - redis_data:/data  # Persist data even if container restarts
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+
+volumes:
+  redis_data:
  
 networks:
   postgres:

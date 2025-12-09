@@ -3,6 +3,7 @@ import {
   HttpException,
   HttpStatus,
   Injectable,
+  NotFoundException,
 } from '@nestjs/common';
 import { UsersService } from 'src/users/users.service';
 import * as bcrypt from 'bcryptjs';
@@ -10,6 +11,7 @@ import { RegisterDto } from './dto/register.dto';
 import { PostgresError } from 'src/database/postgresError.enum';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { TokenPayload } from './interface/TokenPayload.interface';
 
 @Injectable()
 export class AuthsService {
@@ -18,6 +20,15 @@ export class AuthsService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
+
+  public async getUserFromAuthenticationToken(token: string) {
+    const payload: TokenPayload = this.jwtService.verify(token, {
+      secret: this.configService.get('JWT_ACCESS_TOKEN_SECRET'),
+    });
+    if (payload.userId) {
+      return this.usersService.getById(payload.userId);
+    }
+  }
 
   async registerUser(data: RegisterDto) {
     const hashedPassword = await bcrypt.hash(data.password, 10);
@@ -29,7 +40,6 @@ export class AuthsService {
 
       return record;
     } catch (err) {
-      console.log(err);
       if (err?.code === PostgresError?.UniqueViolation) {
         throw new HttpException(
           'User with that email already exist',
@@ -63,13 +73,31 @@ export class AuthsService {
     }
   }
 
-  async getJwtTokenWithCookie(userId) {
+  public getCookiesForLogOut() {
+    return [
+      'Authentication=; HttpOnly; Path=/; Max-Age=0',
+      'Refresh=; HttpOnly; Path=/; Max-Age=0',
+    ];
+  }
+
+  async getCookieWithJwtAccessToken(userId) {
     const payload = { userId };
-    const token = this.jwtService.sign(
-      payload,
-      this.configService.get('JWT_SECRET'),
-    );
-    return `Authorization=${token}; HttpOnly;Path=/;Max-Age=${this.configService.get('JWT_EXPIRATION_TIME')}`;
+
+    const token = this.jwtService.sign(payload, {
+      secret: this.configService.get('JWT_ACCESS_TOKEN_SECRET'),
+      expiresIn: this.configService.get('JWT_ACCESS_TOKEN_EXPIRATION_TIME'),
+    });
+    return `Authentication=${token}; HttpOnly;Path=/;Max-Age=${this.configService.get('JWT_ACCESS_TOKEN_EXPIRATION_TIME')}`;
+  }
+
+  async getCookieWithJwtRefreshToken(userId) {
+    const payload = { userId };
+
+    const token = this.jwtService.sign(payload, {
+      secret: this.configService.get('JWT_REFRESH_TOKEN_SECRET'),
+      expiresIn: this.configService.get('JWT_REFRESH_TOKEN_EXPIRATION_TIME'),
+    });
+    return `Refresh=${token}; HttpOnly;Path=/;Max-Age=${this.configService.get('JWT_REFRESH_TOKEN_EXPIRATION_TIME')}`;
   }
 
   async getCookieForLogout() {

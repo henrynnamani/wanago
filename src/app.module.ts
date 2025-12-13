@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PostsModule } from './posts/posts.module';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { DatabaseModule } from './database/database.module';
 import { UsersModule } from './users/users.module';
 import { AuthsModule } from './auths/auths.module';
@@ -17,10 +17,24 @@ import { EmailSchedulingModule } from './email-scheduling/email-scheduling.modul
 import { ChatModule } from './chat/chat.module';
 import { MessagesModule } from './messages/messages.module';
 import { ChatGateway } from './chat/chat.gateway';
+import { TwoFactorAuthenticatorModule } from './two-factor-authenticator/two-factor-authenticator.module';
+import { PrismaModule } from './prisma/prisma.module';
+import { BullModule } from '@nestjs/bull';
+import { OptimizeModule } from './optimize/optimize.module';
 
 @Module({
   imports: [
     PostsModule,
+    BullModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) =>
+        ({
+          redis: {
+            host: configService.get<string>('REDIS_HOST', 'localhost')!,
+            port: Number(configService.get('REDIS_PORT', 6379))!,
+          },
+        }) as any,
+    }),
     ScheduleModule.forRoot({}),
     ConfigModule.forRoot({
       isGlobal: true,
@@ -75,6 +89,7 @@ import { ChatGateway } from './chat/chat.gateway';
         EMAIL_USER: Joi.string().optional(),
         EMAIL_PASSWORD: Joi.string().optional(),
         EMAIL_FROM: Joi.string().optional(),
+        GRAPHQL_PLAYGROUND: Joi.number(),
       }),
     }),
     DatabaseModule,
@@ -86,6 +101,9 @@ import { ChatGateway } from './chat/chat.gateway';
     EmailSchedulingModule,
     ChatModule,
     MessagesModule,
+    TwoFactorAuthenticatorModule,
+    PrismaModule,
+    OptimizeModule,
   ],
   controllers: [AppController],
   providers: [

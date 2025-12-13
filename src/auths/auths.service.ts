@@ -80,8 +80,8 @@ export class AuthsService {
     ];
   }
 
-  async getCookieWithJwtAccessToken(userId) {
-    const payload = { userId };
+  async getCookieWithJwtAccessToken(userId, isSecondFactorAuthenticated=false) {
+    const payload = { userId, isSecondFactorAuthenticated };
 
     const token = this.jwtService.sign(payload, {
       secret: this.configService.get('JWT_ACCESS_TOKEN_SECRET'),

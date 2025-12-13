@@ -1,0 +1,5 @@
+model Post {
+  id String @default(uuid()) @id
+  title String
+  content String
+}

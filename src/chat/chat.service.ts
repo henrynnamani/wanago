@@ -18,7 +18,7 @@ export class ChatService {
     );
 
     if (!user) {
-      throw new WsException('Invalid Crednetials');
+      throw new WsException('Invalid Credentials');
     }
 
     return user;

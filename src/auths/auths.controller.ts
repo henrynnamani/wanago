@@ -50,11 +50,15 @@ export class AuthsController {
       user.id,
     );
 
-
     request.res?.setHeader('Set-Cookie', [
       accessTokenCookie,
       refreshTokenCookie,
     ]);
+
+    if (user.isTwoFactorAuthenticationEnabled) {
+      return;
+    }
+
     return user;
   }
 

@@ -13,6 +13,7 @@ import { CreatePostDto, UpdatePostDto } from './dto/posts.dto';
 import { JwtAuthGuard } from 'src/auths/guard/jwt.guard';
 import { LoggedInUser } from 'src/auths/decorator/current-user.decorator';
 import { User } from 'src/users/model/user.entity';
+import JwtTwoFactorGuard from 'src/auths/guard/jwt-2fa.guard';
 
 @Controller('posts')
 export class PostsController {
@@ -28,7 +29,7 @@ export class PostsController {
     return this.postsService.getPostById(id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtTwoFactorGuard)
   @Post()
   async createPost(@Body() post: CreatePostDto, @LoggedInUser() user: User) {
     return this.postsService.createPost(post, user);

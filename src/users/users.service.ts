@@ -54,6 +54,18 @@ export class UsersService {
     }
   }
 
+  async setTwoFactorAuthenticationSecret(secret: string, userId: string) {
+    return await this.usersRepository.update(userId, {
+      twoFactorAuthenticationSecret: secret,
+    });
+  }
+
+  async turnOnTwoFactorAuthentication(userId: string) {
+    return this.usersRepository.update(userId, {
+      isTwoFactorAuthenticationEnabled: true
+    })
+  }
+
   async getUserIfRefreshTokenMatches(refreshToken: string, userId: string) {
     const user = await this.getById(userId);
 

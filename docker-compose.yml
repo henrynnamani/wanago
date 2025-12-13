@@ -41,6 +41,18 @@ services:
     depends_on:
       - redis
 
+  nestjs-api:
+    build:
+      context: .
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+    networks:
+      - postgres
+
 volumes:
   redis_data:
  

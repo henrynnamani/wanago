@@ -42,6 +42,12 @@ export class User {
   @JoinColumn()
   avatar?: PublicFile;
 
+  @Column({ nullable: true })
+  twoFactorAuthenticationSecret?: string;
+
+  @Column({ default: false })
+  isTwoFactorAuthenticationEnabled: boolean;
+
   @OneToMany(() => PrivateFile, (file) => file.owner)
   private_files: PrivateFile[];
 }

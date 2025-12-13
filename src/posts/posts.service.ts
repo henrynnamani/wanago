@@ -1,4 +1,10 @@
-import { HttpException, HttpStatus, Injectable, Inject } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  Inject,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreatePostDto, UpdatePostDto } from './dto/posts.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Post } from './model/post.entity';
@@ -6,12 +12,17 @@ import { Repository } from 'typeorm';
 import { User } from 'src/users/model/user.entity';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client';
+
+export enum PrismaError {
+  RecordDoesNotExist = 'P2025',
+}
 
 @Injectable()
 export class PostsService {
   constructor(
-    @InjectRepository(Post)
-    private readonly postsRepository: Repository<Post>,
+    private readonly prismaService: PrismaService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
@@ -22,7 +33,7 @@ export class PostsService {
       return cachedPosts;
     }
 
-    const posts = this.postsRepository.find({ relations: ['author'] });
+    const posts = this.prismaService.post.findMany();
 
     await this.cacheManager.set('posts', posts);
 
@@ -38,7 +49,11 @@ export class PostsService {
       return cachedPost;
     }
 
-    const post = await this.postsRepository.findOneBy({ id });
+    const post = await this.prismaService.post.findUnique({
+      where: {
+        id,
+      },
+    });
     if (post) {
       await this.cacheManager.set(cacheKey, post);
       return post;
@@ -48,8 +63,18 @@ export class PostsService {
   }
 
   async updatePost(id: string, post: UpdatePostDto) {
-    await this.postsRepository.update(id, post);
-    const updatedPost = await this.postsRepository.findOneBy({ id });
+    await this.prismaService.post.update({
+      data: {
+        ...post,
+        id: undefined,
+      },
+      where: {
+        id,
+      },
+    });
+    const updatedPost = await this.prismaService.post.findUnique({
+      where: { id },
+    });
     if (updatedPost) {
       await this.cacheManager.del(`post:${id}`);
       await this.cacheManager.del('posts');
@@ -60,20 +85,30 @@ export class PostsService {
   }
 
   async createPost(post: CreatePostDto, user: User) {
-    const newPost = this.postsRepository.create({
-      ...post,
-      author: user,
+    const newPost = this.prismaService.post.create({
+      data: post,
     });
 
     await this.cacheManager.del('posts');
 
-    return this.postsRepository.save(newPost);
+    // return this.postsRepository.save(newPost);
   }
 
   async deletePost(id: string) {
-    const deleteResponse = await this.postsRepository.delete(id);
-    if (!deleteResponse.affected) {
-      throw new HttpException('Post not found', HttpStatus.NOT_FOUND);
+    try {
+      return await this.prismaService.post.delete({
+        where: {
+          id,
+        },
+      });
+    } catch (err) {
+      if (
+        err instanceof PrismaClientKnownRequestError &&
+        err.code === PrismaError.RecordDoesNotExist
+      ) {
+        throw new NotFoundException(id);
+      }
+      throw err;
     }
   }
 }

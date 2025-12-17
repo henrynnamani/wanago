@@ -18,7 +18,6 @@ import { ChatModule } from './chat/chat.module';
 import { MessagesModule } from './messages/messages.module';
 import { ChatGateway } from './chat/chat.gateway';
 import { TwoFactorAuthenticatorModule } from './two-factor-authenticator/two-factor-authenticator.module';
-import { PrismaModule } from './prisma/prisma.module';
 import { BullModule } from '@nestjs/bull';
 import { OptimizeModule } from './optimize/optimize.module';
 
@@ -102,7 +101,6 @@ import { OptimizeModule } from './optimize/optimize.module';
     ChatModule,
     MessagesModule,
     TwoFactorAuthenticatorModule,
-    PrismaModule,
     OptimizeModule,
   ],
   controllers: [AppController],

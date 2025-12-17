@@ -12,8 +12,8 @@ import { Repository } from 'typeorm';
 import { User } from 'src/users/model/user.entity';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
-import { PrismaService } from 'src/prisma/prisma.service';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client';
+import { trace, context } from '@opentelemetry/api';
 
 export enum PrismaError {
   RecordDoesNotExist = 'P2025',
@@ -22,21 +22,30 @@ export enum PrismaError {
 @Injectable()
 export class PostsService {
   constructor(
-    private readonly prismaService: PrismaService,
+    @InjectRepository(Post)
+    private readonly postsRepository: Repository<Post>,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
   async getAllPosts() {
+    const tracer = trace.getTracer('nestjs-opentelemetry-demo');
+
+    const span = tracer.startSpan(
+      "fetch-posts",
+      undefined,
+      context.active()
+    )
     const cachedPosts = await this.cacheManager.get('posts');
 
     if (cachedPosts) {
       return cachedPosts;
     }
 
-    const posts = this.prismaService.post.findMany();
-
+    const posts = await this.postsRepository.find();
     await this.cacheManager.set('posts', posts);
 
+    span.end();
+    
     return posts;
   }
 
@@ -49,11 +58,7 @@ export class PostsService {
       return cachedPost;
     }
 
-    const post = await this.prismaService.post.findUnique({
-      where: {
-        id,
-      },
-    });
+    const post = await this.postsRepository.findOne({ where: { id } });
     if (post) {
       await this.cacheManager.set(cacheKey, post);
       return post;
@@ -63,16 +68,8 @@ export class PostsService {
   }
 
   async updatePost(id: string, post: UpdatePostDto) {
-    await this.prismaService.post.update({
-      data: {
-        ...post,
-        id: undefined,
-      },
-      where: {
-        id,
-      },
-    });
-    const updatedPost = await this.prismaService.post.findUnique({
+    await this.postsRepository.update(id, post);
+    const updatedPost = await this.postsRepository.findOne({
       where: { id },
     });
     if (updatedPost) {
@@ -85,22 +82,17 @@ export class PostsService {
   }
 
   async createPost(post: CreatePostDto, user: User) {
-    const newPost = this.prismaService.post.create({
-      data: post,
+    const newPost = this.postsRepository.create({
+      ...post,
+      author: user,
     });
 
     await this.cacheManager.del('posts');
-
-    // return this.postsRepository.save(newPost);
   }
 
   async deletePost(id: string) {
     try {
-      return await this.prismaService.post.delete({
-        where: {
-          id,
-        },
-      });
+      return await this.postsRepository.delete(id);
     } catch (err) {
       if (
         err instanceof PrismaClientKnownRequestError &&

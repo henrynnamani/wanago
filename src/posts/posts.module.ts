@@ -8,11 +8,10 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { redisStore } from 'cache-manager-redis-yet';
 import { config } from 'process';
 import { PostsResolver } from './post.resolver';
-import { PrismaModule } from 'src/prisma/prisma.module';
+// import { PrismaModule } from 'src/prisma/prisma.module';
 
 @Module({
   imports: [
-    PrismaModule,
     TypeOrmModule.forFeature([Post]),
     CacheModule.registerAsync({
       imports: [ConfigModule],

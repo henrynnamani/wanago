@@ -41,6 +41,8 @@ services:
     depends_on:
       - redis
 
+      # yGQ1nKjfoVbpKZns1U2Evcf6A/khia7/zD84e17a
+
   nestjs-api:
     build:
       context: .
@@ -52,6 +54,12 @@ services:
       - postgres
     networks:
       - postgres
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "16686:16686"
+      - "4317:4317"
 
 volumes:
   redis_data:
